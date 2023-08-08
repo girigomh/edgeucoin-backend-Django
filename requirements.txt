@@ -1,0 +1,7 @@
+    django~=4.2.4
+    djangorestframework~=3.14.0
+    django-cors-headers~=4.2.0
+    djangorestframework-simplejwt~=5.2.2
+    channels~=4.0.0
+    channels_redis~=4.1.0
+    Pillow
