@@ -3,6 +3,8 @@ from django.contrib.auth.base_user import BaseUserManager
 from django.contrib.auth.models import AbstractUser
 from django.utils.translation import gettext_lazy as _
 import uuid
+import time
+
 
 # Create your models here.
 
@@ -21,7 +23,7 @@ class SchoolLevel(models.TextChoices):
     MIDDLE = "Middle School"
     HIGH = "High School"
 
-class UserAccountManager(BaseUserManager):
+class CustomUserManager(BaseUserManager):
     
     def create_user(self, email, password, **extra_fields):
         if not email:
@@ -45,7 +47,7 @@ class UserAccountManager(BaseUserManager):
             raise ValueError(_('Superuser must have is_superuser=True.'))
         return self.create_user(email, password, **extra_fields)
     
-class UserAccount(AbstractUser):
+class CustomUser(AbstractUser):
     class Roles(models.TextChoices):
         ADMIN = "admin"
         SCHOOL = "school"
@@ -53,10 +55,11 @@ class UserAccount(AbstractUser):
         TEACHER = "teacher"
         PARENT = "parent"
 
-    role = models.CharField(max_length=8, choices=Roles.choices, default=Roles.TEACHER)
-    
     username = None
+    name = models.CharField(max_length=40, null=True)
     email = models.EmailField(_('Email address'), unique=True)
+    image = models.FileField(upload_to=upload_to, null=True, blank=True)
+    role = models.CharField(max_length=8, choices=Roles.choices, default=Roles.TEACHER)
     is_active = models.BooleanField(default = True)
     is_admin = models.BooleanField(default = False)
     is_staff = models.BooleanField(default = False)
@@ -65,15 +68,19 @@ class UserAccount(AbstractUser):
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
 
-    objects = UserAccountManager()
+    objects = CustomUserManager()
 
     def __str__(self):
         return self.email
-    
+
+class OnlineUser(models.Model):
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return self.user.name
+
 class School(models.Model):
-    name = models.CharField(max_length=40, null=True)
-    image = models.FileField(upload_to=upload_to, null=True, blank=True)
-    user = models.OneToOneField(UserAccount, on_delete=models.CASCADE)
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
     level = models.CharField(max_length=20, choices=SchoolLevel.choices, default=SchoolLevel.ELEMENTARY)
     contact = models.CharField(max_length=80, null=True, blank=True)
     email = models.EmailField(unique=True, null=True, blank=True)
@@ -87,9 +94,7 @@ class School(models.Model):
     zipcode = models.CharField(max_length=20, null=True, blank=True)
 
 class Student(models.Model):
-    name = models.CharField(max_length=40, null=True)
-    image = models.FileField(upload_to=upload_to, null=True, blank=True)
-    user = models.OneToOneField(UserAccount, on_delete=models.CASCADE)
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
     grade = models.CharField(max_length=20, null=True, blank=True)
     gender = models.CharField(max_length=6, choices=Genders.choices, default=Genders.MALE)
     athlete = models.BooleanField(default=False)
@@ -100,9 +105,7 @@ class Student(models.Model):
     interests = models.JSONField(null=True)
 
 class Parent(models.Model):
-    name = models.CharField(max_length=40, null=True)
-    image = models.FileField(upload_to=upload_to, null=True, blank=True)
-    user = models.OneToOneField(UserAccount, on_delete=models.CASCADE)
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
     relationship = models.CharField(max_length=20, blank=True)
     phone = models.CharField(max_length=20, blank=True, null=True)
     gender = models.CharField(max_length=6, choices=Genders.choices, default=Genders.MALE)
@@ -110,37 +113,36 @@ class Parent(models.Model):
     students = models.ManyToManyField(Student, blank=True)
 
 class Teacher(models.Model):
-    name = models.CharField(max_length=40, null=True)
-    image = models.FileField(upload_to=upload_to, null=True, blank=True)
-    user = models.OneToOneField(UserAccount, on_delete=models.CASCADE)
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
     subject = models.JSONField(null=True)
     gender = models.CharField(max_length=6, choices=Genders.choices, default=Genders.MALE)
     school = models.ForeignKey(School, on_delete=models.CASCADE)
     students = models.ManyToManyField(Student, blank=True)
 
-class Goal(models.Model):
-    name = models.CharField(max_length=40)
-    responses = models.JSONField(null=True)
-    
-class AwardGoal(models.Model):
+class Goals(models.Model):
     class GoalTypes(models.TextChoices):
-        ACADEMIC = "ACADEMIC", "academic"
-        BEHAVIORAL = "BEHAVIORAL", "behavioral"
-        PARENT = "PARENT", "parent"
-
-    class Status(models.TextChoices):
-        INCOMPLETE = "INCOMPLETE", "incomplete"
-        COMPLETED = "COMPLETED", "completed"
-    
+        ACADEMIC = "Academic"
+        BEHAVIORAL = "Behavioral"
+        PARENT = "Parent"
+    name = models.CharField(max_length=40, null=True)
+    responses = models.JSONField(null=True)
     type = models.CharField(max_length=20, choices=GoalTypes.choices, default=GoalTypes.BEHAVIORAL)
-    student = models.ForeignKey(Student, on_delete=models.CASCADE)
-    reporter = models.ForeignKey(UserAccount, on_delete=models.CASCADE)
-    goal = models.ForeignKey(Goal, on_delete=models.CASCADE, null=True)
-    start_date = models.DateField()
-    end_date = models.DateField()
-    score = models.IntegerField()
+    reporter = models.ForeignKey(CustomUser, on_delete=models.CASCADE, null=True)
+    
+class Goal(models.Model):
+   
+    class Status(models.TextChoices):
+        INCOMPLETE = "incomplete"
+        COMPLETED = "completed"
+    
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, null=True)
+    goal = models.ForeignKey(Goals, on_delete=models.CASCADE, null=True)
+    start_date = models.DateField(null=True)
+    end_date = models.DateField(null=True)
+    score = models.IntegerField(default=0)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.INCOMPLETE)
     view_status = models.BooleanField(default=False)
+    reporter = models.ForeignKey(CustomUser, on_delete=models.CASCADE, null=True)
 
 class Reward(models.Model):
     title = models.CharField(max_length=100, blank=True)
@@ -153,5 +155,10 @@ class Reward(models.Model):
 class Record(models.Model):
     date = models.DateField(auto_now_add=True)
     score = models.IntegerField()
-    note = models.CharField(max_length=200)
-    goal = models.ForeignKey(AwardGoal, on_delete=models.CASCADE)
+    note = models.CharField(max_length=1000, blank=True)
+    goal = models.ForeignKey(Goal, on_delete=models.CASCADE)
+
+class Complete(models.Model):
+    coin = models.IntegerField(default=0)
+    explain = models.CharField(max_length=255, blank=True)
+    goal = models.OneToOneField(Goal, on_delete=models.CASCADE)

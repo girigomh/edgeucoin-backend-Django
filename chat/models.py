@@ -1,19 +1,24 @@
 from django.db import models
-from django.conf import settings
+from shortuuidfield import ShortUUIDField
+from api.models import CustomUser
+
 
 # Create your models here.
+class ChatRoom(models.Model):
+    roomId = ShortUUIDField()
+    type = models.CharField(max_length=10, default="DM")
+    member = models.ManyToManyField(CustomUser)
+    name = models.CharField(max_length=20, null=True, blank=True)
 
-class Conversation(models.Model):
-    initiator = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='convo_starter')
-    receiver = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='convo_participant')
-    start_time = models.DateTimeField(auto_now_add=True)
+    def __str__(self):
+        return self.roomId + "->" + str(self.name)
 
-class Message(models.Model):
-    sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="message_sender")
-    text = models.CharField(max_length=200, blank=True)
-    attachement = models.FileField(blank=True)
-    conversation_id = models.ForeignKey(Conversation, on_delete=models.CASCADE)
+
+class ChatMessage(models.Model):
+    chat = models.ForeignKey(ChatRoom, on_delete=models.SET_NULL, null=True)
+    user = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True)
+    message = models.CharField(max_length=255)
     timestamp = models.DateTimeField(auto_now_add=True)
 
-    class Meta:
-        ordering = ('-timestamp',)
+    def __str__(self):
+        return self.message

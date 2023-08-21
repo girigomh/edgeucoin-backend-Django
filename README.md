@@ -1,1 +1,0 @@
-# edgeucoin-backend-Django
