@@ -28,12 +28,13 @@ SECRET_KEY = 'django-insecure-urok4-m)droye=s%1*$o&y*s9w2p&2@y4mfljs&c1ml8)rrhdu
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
-
+ALLOWED_HOSTS = ["*"]
 
 # Application definition
 
 INSTALLED_APPS = [
+    "daphne",
+    "channels",
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -42,9 +43,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     "rest_framework",
     "corsheaders",
-    "channels",
-    'api',
-    'chat'
+    "api",
+    "chat",
 ]
 
 CORS_ORIGIN_ALLOW_ALL = True
@@ -69,10 +69,8 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
-    'ROTATE_REFRESH_TOKENS': True,
-    'BLACKLIST_AFTER_ROTATION': True
 }
 
 TEMPLATES = [
@@ -92,6 +90,14 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'server.wsgi.application'
+ASGI_APPLICATION = 'server.asgi.application'
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+    },
+}
+
 
 
 # Database
@@ -104,7 +110,7 @@ DATABASES = {
     }
 }
 
-AUTH_USER_MODEL = 'api.UserAccount'
+AUTH_USER_MODEL = 'api.CustomUser'
 AUTHENTICATION_BACKENDS = ['api.auth_backends.EmailBackend']
 
 # Password validation
@@ -125,17 +131,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-ASGI_APPLICATION = "server.asgi.application"
-
-CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels_redis.core.RedisChannelLayer',
-        'CONFIG': {
-            "hosts": [('127.0.0.1', 6379)],
-        },
-    },
-}
-
 # Internationalization
 # https://docs.djangoproject.com/en/4.1/topics/i18n/
 
@@ -152,6 +147,8 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/4.1/howto/static-files/
 
 STATIC_URL = 'static/'
+
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
 # Actual directory user files go to
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
